@@ -1,0 +1,57 @@
+%{
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h> 
+#include "PL.tab.h"	// This file name will be changed to project's name.
+
+extern void yyerror(const char *);  /* prints grammar violation message */
+%}
+%option yylineno
+
+
+Letter [a-zA-Z]
+Digit [0-9]
+Identifier {Letter}({Letter}|{Digit})*
+Integer {Digit}+
+Float {Integer}+\.{Integer}+
+Delimiter [-()<>=+*/:;,.]
+Whitespace [ \t\n]+	
+
+%%
+"int"		{printf("%s\n","INT"); yylval.str = strdup(yytext); return INT;}
+"float"		{printf("%s\n","FLOAT"); yylval.str = strdup(yytext); return FLOAT;}
+"!"			{printf("%s\n","NOT"); yylval.str = strdup(yytext); return NOT;}
+">="		{printf("%s\n","GE"); yylval.str = strdup(yytext); return GE;}
+"<="		{printf("%s\n","LE"); yylval.str = strdup(yytext); return LE;}
+"=="		{printf("%s\n","EQ"); yylval.str = strdup(yytext); return EQ;}
+"!="		{printf("%s\n","NE"); yylval.str = strdup(yytext); return NE;}
+"mainprog"	{printf("%s\n","MAINPROG"); yylval.str = strdup(yytext); return MAINPROG;}
+"var"		{printf("%s\n","VAR"); yylval.str = strdup(yytext); return VAR;}
+"array"		{printf("%s\n","ARRAY"); yylval.str = strdup(yytext); return ARRAY;}
+"of"		{printf("%s\n","OF"); yylval.str = strdup(yytext); return OF;}
+"function"	{printf("%s\n","FUNCTION"); yylval.str = strdup(yytext); return FUNCTION;}
+"procedure"	{printf("%s\n","PROCEDURE"); yylval.str = strdup(yytext); return PROCEDURE;}
+"begin"		{printf("%s\n","_BEGIN"); yylval.str = strdup(yytext); return _BEGIN;}
+"end"		{printf("%s\n","END"); yylval.str = strdup(yytext); return END;}
+"if"		{printf("%s\n","IF"); yylval.str = strdup(yytext); return IF;}
+"then"		{printf("%s\n","THEN"); yylval.str = strdup(yytext); return THEN;}
+"else"		{printf("%s\n","ELSE"); yylval.str = strdup(yytext); return ELSE;}
+"nop"		{printf("%s\n","NOP"); yylval.str = strdup(yytext); return NOP;}
+"while"		{printf("%s\n","WHILE"); yylval.str = strdup(yytext); return WHILE;}
+"return"	{printf("%s\n","RETURN");  yylval.str = strdup(yytext);return RETURN;}
+"print"		{printf("%s\n","PRINT"); yylval.str = strdup(yytext); return PRINT;}
+"["			{printf("%s\n","LBRACKET");  yylval.str = strdup(yytext);return LBRACKET;}
+"]"			{printf("%s\n","RBRACKET"); yylval.str = strdup(yytext); return RBRACKET;}
+
+{Delimiter}		{printf("%s : %c\n","Delimiter",yytext[0]); yylval.str = strdup(yytext); return yytext[0];}
+{Identifier}	{printf("%s : %s\n","ID", yytext); yylval.str = strdup(yytext); return ID;}
+{Integer}		{printf("%s : %d\n","INTEGER_NUM", atoi(yytext)); yylval.int_value = atoi(yytext); return INTEGER_NUM;}
+{Float}			{printf("%s : %f\n","FLOAT_NUM", atof(yytext)); yylval.float_value = atof(yytext); return FLOAT_NUM;}
+{Whitespace}	;
+.               yyerror("Unknown character");
+%%
+
+int yywrap(void)        /* called at end of input */
+{
+    return 1;           /* terminate now */
+}

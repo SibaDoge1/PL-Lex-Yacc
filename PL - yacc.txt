@@ -1,0 +1,200 @@
+%{
+	#include <stdio.h>
+	#include <stdlib.h>
+	#include <string.h>
+	extern int yylineno; 
+	extern int yylex();
+	extern void yyerror(const char *);
+	extern FILE *yyin;
+	extern char *yytext;
+	extern int yychar;
+	void my_yyerror(const char *s);
+	void print_tok();
+
+	typedef enum { Int, Str,Func} nodeEnum;
+	typedef struct Node {
+		nodeEnum type;
+		char* name;
+		union {
+			int int_value;
+			char* str;
+			double float_value;
+		};
+	} node;
+
+	int errorCount;
+
+
+%}
+
+%union {
+	char*	str;
+	int		int_value;
+	double	float_value;
+}
+
+%token <int_value>		INTEGER_NUM
+%token <float_value>	FLOAT_NUM
+%token <str> ID
+%token INT FLOAT 
+%token NOT GE LE EQ NE MAINPROG VAR ARRAY OF FUNCTION PROCEDURE _BEGIN END IF THEN ELSE NOP WHILE RETURN PRINT LBRACKET RBRACKET
+
+%start program
+%right '='
+%left GE LE EQ NE '>' '<'
+%left '+' '-'
+%left '*' '/'
+%nonassoc UMINUS
+
+// %type <float_value> 
+%type <int_value> multop sign relop addop term factor simple_expression expression
+
+%%
+
+program: MAINPROG ID ';' declarations subprogram_declarations compound_statement
+		;
+declarations : VAR identifier_list ':' type ';' declarations
+			   | 
+			   ;
+identifier_list :	ID 
+				| ID ',' identifier_list
+				;
+type : standard_type 
+	 | ARRAY LBRACKET INTEGER_NUM RBRACKET OF standard_type
+	 ;
+standard_type : INT 
+			  | FLOAT
+			  ;
+subprogram_declarations : subprogram_declaration subprogram_declarations
+						| 
+						;
+subprogram_declaration : subprogram_head declarations compound_statement
+					   ;
+subprogram_head : FUNCTION ID arguments ':' standard_type ';' 
+				| PROCEDURE ID arguments ';'
+				;
+arguments : '(' parameter_list ')' 
+		  | /* epsilon */
+		  ;
+parameter_list : identifier_list ':' type 
+			   | identifier_list ':' type ';' parameter_list
+			   ;
+compound_statement : _BEGIN statement_list END
+				   ;
+statement_list : statement 
+			   | statement ';' statement_list
+			   | error ';' statement_list
+			   ;
+statement : variable '=' expression 
+		  | print_statement 
+		  | procedure_statement 
+		  | compound_statement 
+		  | IF expression THEN statement ELSE statement 
+		  | WHILE '(' expression ')' statement 
+		  | RETURN expression 
+		  | NOP
+		  ;
+print_statement : PRINT 
+				| PRINT '(' expression ')'
+				| PRINT '(' error ')'
+				;
+variable : ID 
+		 | ID LBRACKET expression RBRACKET
+		 ;
+procedure_statement : ID '(' actual_parameter_expression ')'
+					;
+actual_parameter_expression : /* epsilon */
+							| expression_list
+							;
+expression_list : expression 
+				| expression ',' expression_list
+				;
+expression : simple_expression 
+		   | simple_expression relop simple_expression
+		   ;
+simple_expression : term 
+				  | term addop simple_expression
+				  ;
+term : factor 
+	 | factor multop term {if($2 == '/' && $3 == 0){yyerror("Arithmatic Error, Divide By Zero"); YYERROR;} }
+	 ;
+factor : INTEGER_NUM 
+	   | FLOAT_NUM 
+	   | variable 
+	   | procedure_statement 
+	   | NOT factor 
+	   | sign factor
+	   ;
+sign : '+' {$$ = '+';}
+	 | '-' {$$ = '-';}
+	 ;
+relop : '>' {$$ = '>';}
+	  | GE {$$ = GE;}
+	  | '<' {$$ = '<';}
+	  | LE {$$ = LE;}
+	  | EQ {$$ = EQ;}
+	  | NE {$$ = NE;}
+	  ;
+addop : '+' {$$ = '+';}
+	  | '-' {$$ = '-';}
+	  ;
+multop : '*' {$$ = '*';}
+	  | '/' {$$ = '/';}
+	  ;
+
+
+%%
+
+main(argc, argv)
+int argc;
+char** argv;
+{
+errorCount = 0;
+if (argc > 1)
+{
+    FILE *file;
+    file = fopen(argv[1], "r");
+
+    if (!file)
+    {
+        fprintf(stderr, "failed open");
+        exit(1);
+    }
+    yyin=file;
+}
+else
+{
+    printf("no input file\n");
+    exit(1);
+}
+yyparse();
+if(!errorCount)
+	printf("\nEnd With No Error!\n");
+else
+	printf("\n*** %d Error Occurred!\n", errorCount);
+return 0; 
+} 
+
+
+void yyerror(const char *s)
+{
+	errorCount++;
+	fprintf(stderr, "*** %s at line:%d, Token: ", s, yylineno);
+	print_tok();
+}
+
+void my_yyerror(const char *s)
+{
+	errorCount++;
+	fprintf(stderr, "*** %s at line:%d, near Token: \n", s, yylineno);
+	print_tok();
+}
+
+void print_tok()
+{
+	switch (yychar) {
+      case INTEGER_NUM: fprintf(stderr, "'%d'\n", yylval); break;
+      case FLOAT_NUM:fprintf(stderr, "'%f'\n", yylval); break;
+	  default: fprintf(stderr, "'%s'\n", yylval); break;
+	}
+}
